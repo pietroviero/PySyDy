@@ -1,13 +1,7 @@
-"""
-PySyDy - A simple Python library for System Dynamics modeling.
-"""
-
-from .stock import Stock
+from .simulation import Simulation
+from .auxiliary import Auxiliary
 from .flow import Flow
-from .auxiliary import Auxiliary # Import the new Auxiliary class
+from .stock import Stock
+from .parameter import Parameter
 
-__all__ = [
-    'Stock',
-    'Flow',
-    'Auxiliary', # Add Auxiliary to __all__
-]
+__all__ = ["Simulation", "Auxiliary", "Flow", "Stock", "Parameter"]
