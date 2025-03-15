@@ -27,6 +27,11 @@ class Auxiliary:
                        dependency tracking, but not strictly enforced in the calculation itself.
         :type inputs: list of str, optional
         """
+
+        # to verify the data
+        if not callable(calculation_function):
+            raise TypeError("calculation_function must be a callable function.")
+            
         self.name = name
         self.calculation_function = calculation_function
         self.inputs = inputs if inputs is not None else [] # Store input names for documentation
@@ -49,6 +54,18 @@ class Auxiliary:
         :rtype: float or any
         """
         return self.value
+
+    # I don't know but maybe it is more useful to have a function that compute automatically the 
+    # last value of the auxiliary variables avoiding making loops in the python script to get the last value 
+    def get_value_uptaded(self, system_state):
+        """
+        Returns the updated value of the auxiliary variable.
+
+        :param system_state: A dictionary representing the current system state.
+        :return: The calculated value.
+        """
+        return self.calculation_function(system_state)  # Always recalculate on request
+
 
     def __str__(self):
         return f"Auxiliary(name='{self.name}', value={self.value})"
