@@ -1,6 +1,11 @@
-import pysydy 
+import sys
+import os
+
+# Add the parent directory to the path so we can import pysydy
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import pysydy
 import matplotlib.pyplot as plt
-import pandas as pd
 
 # Create stocks (compartments)
 susceptible = pysydy.Stock('Susceptible', 9999)
@@ -10,7 +15,7 @@ recovered = pysydy.Stock('Recovered', 0)
 # Create parameters
 contact_rate = pysydy.Parameter('contact_rate', 6.0, units='contacts/person/day')
 infectivity = pysydy.Parameter('infectivity', 0.25, units='probability')
-recovery_rate = pysydy.Parameter('recovery_rate', 0.5, units='1/day')  # 1/2 days
+infectious_period = pysydy.Parameter('infectious_period', 2.0, units='days')  # Average duration of infectivity
 total_population = pysydy.Parameter('total_population', 10000.0, units='people')
 
 # Create flows
@@ -32,7 +37,7 @@ recovery_flow = pysydy.Flow(
     source_stock=infected,
     target_stock=recovered,
     rate_function=lambda state: (
-        state['parameters']['recovery_rate'].value *
+        (1.0 / state['parameters']['infectious_period'].value) *
         state['stocks']['Infected'].value
     )
 )
@@ -42,22 +47,30 @@ sim = pysydy.Simulation(
     stocks=[susceptible, infected, recovered],
     flows=[infection_flow, recovery_flow],
     auxiliaries=[],
-    parameters=[contact_rate, infectivity, recovery_rate, total_population],
+    parameters=[contact_rate, infectivity, infectious_period, total_population],
     timestep=0.1  # Smaller timestep for better accuracy
 )
 
-sim.run(duration=30)  # Simulate 30 days
+# Create a graph visualization of the model
+model_graph = pysydy.Graph(sim)
 
-# Plot results
-results = sim.get_results()
-df = results['stocks'].apply(pd.Series)
-df.columns = ['Susceptible', 'Infected', 'Recovered']
-
-plt.figure(figsize=(10, 6))
-plt.plot(df)
-plt.title('SIR Model Dynamics')
-plt.xlabel('Days')
-plt.ylabel('Population')
-plt.legend(df.columns)
-plt.grid(True)
+# Plot the graph
+fig, ax = model_graph.plot(figsize=(10, 8), show_values=True)
+plt.savefig('sir_model_graph.png')  # Save the graph as an image
 plt.show()
+
+# Run a few simulation steps
+print("Running simulation for 5 days...")
+sim.run(duration=5)
+
+# Update the graph with new values
+model_graph.update_graph()
+
+# Plot the updated graph
+fig, ax = model_graph.plot(figsize=(10, 8), show_values=True)
+plt.title('SIR Model After 5 Days')
+plt.savefig('sir_model_graph_after_5_days.png')
+plt.show()
+
+print("\nTo use the interactive plot feature in a Jupyter notebook, use:")
+print("model_graph.interactive_plot()")
