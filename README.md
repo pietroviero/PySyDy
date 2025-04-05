@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 
-**PySyDy** (Python System Dynamics) is a lightweight and intuitive Python library for building and simulating system dynamics models. It provides core components for representing stocks, flows, and auxiliary variables, making it easy to create and explore dynamic systems.
+**PySyDy** (Python System Dynamics) is a lightweight and intuitive Python library for building and simulating system dynamics models. It provides core components for representing stocks, flows, and auxiliary variables, making it easy to create and explore dynamic systems. The library also includes advanced features such as delays, behavior modes, feedback loops, and visualization capabilities.
 
 ## Table of Contents
 
@@ -17,9 +17,10 @@
 - [Advanced Features](#advanced-features)
   - [Delays](#delays)
   - [Behavior Modes](#behavior-modes)
-  - [Coflows](#coflows)
   - [Feedback Loops](#feedback-loops)
 - [Visualization](#visualization)
+  - [Graph](#graph)
+  - [Chart](#chart)
 - [Examples](#examples)
 - [License](#license)
 
@@ -259,6 +260,10 @@ Represents oscillatory behavior where a quantity fluctuates around a goal value 
 
 Represents S-shaped or logistic growth where growth is initially exponential but slows as it approaches a carrying capacity.
 
+#### OvershootAndCollapse
+
+Represents overshoot and collapse behavior where a system exceeds its carrying capacity and then collapses.
+
 **Example:**
 ```python
 # Create an exponential growth model for a population
@@ -272,42 +277,6 @@ population_growth = pysydy.ExponentialGrowth(
 new_population = population_growth.update(1.0)
 ```
 
-### Coflows
-
-Coflows track attributes of stocks as they flow through a system. They are useful for modeling situations where you need to track not just the quantity of a stock, but also some attribute or quality associated with it.
-
-**Key Attributes:**
-- `name`: The name of the coflow
-- `main_stock`: The main stock whose attribute is being tracked
-- `attribute_name`: The name of the attribute being tracked
-- `attribute_stock`: The total amount of the attribute in the stock
-- `attribute_concentration`: The concentration of the attribute in the stock
-
-**Key Methods:**
-- `add_inflow(main_flow, attribute_concentration_function)`: Adds an inflow to the coflow
-- `add_outflow(main_flow)`: Adds an outflow to the coflow
-- `update(system_state, timestep)`: Updates the coflow based on its inflows and outflows
-- `get_attribute_stock()`: Returns the total amount of the attribute
-- `get_attribute_concentration()`: Returns the concentration of the attribute
-
-**Example:**
-```python
-# Create a coflow to track the average age of a population
-age_coflow = pysydy.Coflow(
-    name='Age Structure',
-    main_stock=population,
-    attribute_name='Average Age',
-    initial_attribute_value=30.0  # Initial average age is 30 years
-)
-
-# Add inflows and outflows to the coflow
-age_coflow.add_inflow(births, lambda state: 0.0)  # Newborns have age 0
-age_coflow.add_outflow(deaths)  # Deaths affect the average age
-
-# Update the coflow
-age_coflow.update(system_state, timestep)
-```
-
 ### Feedback Loops
 
 Feedback loops are circular causal relationships in a system. PySyDy provides classes to document and analyze these loops:
@@ -316,13 +285,41 @@ Feedback loops are circular causal relationships in a system. PySyDy provides cl
 
 Reinforcing loops amplify changes in a system, creating exponential growth or collapse.
 
+**Key Attributes:**
+- `name`: The name of the feedback loop
+- `components`: A list of components that form the loop
+- `description`: A description of the feedback mechanism
+- `polarity`: The polarity of the loop (positive for reinforcing loops)
+
+**Key Methods:**
+- `get_components()`: Returns the components that form the feedback loop
+
 #### BalancingLoop
 
 Balancing loops counteract changes in a system, creating goal-seeking or oscillatory behavior.
 
+**Key Attributes:**
+- `name`: The name of the feedback loop
+- `components`: A list of components that form the loop
+- `description`: A description of the feedback mechanism
+- `polarity`: The polarity of the loop (negative for balancing loops)
+
+**Key Methods:**
+- `get_components()`: Returns the components that form the feedback loop
+
 #### FeedbackStructure
 
 Represents a collection of feedback loops in a system dynamics model, helping to analyze the overall feedback structure.
+
+**Key Attributes:**
+- `name`: The name of the feedback structure
+- `loops`: A list of feedback loops in the structure
+
+**Key Methods:**
+- `add_loop(loop)`: Adds a feedback loop to the structure
+- `get_loops()`: Returns all loops in the structure
+- `get_reinforcing_loops()`: Returns only reinforcing loops
+- `get_balancing_loops()`: Returns only balancing loops
 
 **Example:**
 ```python
@@ -336,12 +333,15 @@ population_loop = pysydy.ReinforcingLoop(
 
 ## Visualization
 
+### Graph
+
 The Graph class provides visualization capabilities for system dynamics models, showing the relationships between stocks, flows, auxiliaries, and parameters.
 
 **Key Methods:**
 - `plot(figsize, node_size, font_size, show_values)`: Plots the graph representation of the model
 - `update_graph()`: Updates the graph with current values from the simulation
-- `interactive_plot()`: Creates an interactive plot for Jupyter notebooks
+- `highlight_loop(loop)`: Highlights a feedback loop in the graph
+- `highlight_path(components)`: Highlights a path of components in the graph
 
 **Example:**
 ```python
@@ -352,7 +352,37 @@ model_graph = pysydy.Graph(sim)
 fig, ax = model_graph.plot(figsize=(10, 8), show_values=True)
 ```
 
+### Chart
+
+The Chart class provides time series visualization capabilities for system dynamics models, showing how stocks, flows, and auxiliary variables change over the simulation period.
+
+**Key Methods:**
+- `plot_stocks_time_series()`: Plots the time series of stock values
+- `plot_flows_time_series()`: Plots the time series of flow rates
+- `plot_auxiliaries_time_series()`: Plots the time series of auxiliary variable values
+- `plot_all_variables()`: Plots all variables in the model
+- `plot_variable(variable_name)`: Plots a specific variable
+- `plot_multiple_variables(variable_names)`: Plots multiple variables together
+- `plot_phase_diagram(x_var, y_var)`: Creates a phase diagram of two variables
+
+**Example:**
+```python
+# Create a chart visualization of the simulation results
+model_chart = pysydy.Chart(sim)
+
+# Plot the time series of stock values
+fig, ax = model_chart.plot_stocks_time_series()
+```
+
 ## Examples
+
+The PySyDy package includes several example models in the `examples` directory:
+
+- **SIR Model**: A basic Susceptible-Infected-Recovered epidemiological model
+- **Delay Examples**: Demonstrations of different delay types
+- **Behavior Modes**: Examples of common system behavior patterns
+- **Feedback Loops**: Examples of reinforcing and balancing feedback structures
+- **Graph Visualization**: Examples of model structure visualization
 
 ### Basic SIR Model
 
@@ -397,4 +427,28 @@ recovery_flow = pysydy.Flow(
 
 # Create and run simulation
 sim = pysydy.Simulation(
-    stocks=[
+    stocks=[susceptible, infected, recovered],
+    flows=[infection_flow, recovery_flow],
+    parameters=[contact_rate, infectivity, recovery_rate, total_population],
+    timestep=0.125
+)
+
+sim.run(30)  # Run for 30 days
+
+# Get and plot results
+results = sim.get_results()
+plt.figure(figsize=(10, 6))
+plt.plot(results.index, results['Susceptible'], label='Susceptible')
+plt.plot(results.index, results['Infected'], label='Infected')
+plt.plot(results.index, results['Recovered'], label='Recovered')
+plt.xlabel('Time (days)')
+plt.ylabel('Population')
+plt.title('SIR Model')
+plt.legend()
+plt.grid(True)
+plt.show()
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
