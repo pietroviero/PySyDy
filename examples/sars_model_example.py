@@ -14,13 +14,13 @@ from pysydy.behavior_modes import ExponentialGrowth, ExponentialDecay, GoalSeeki
 # --- Define Model Components ---
 
 # Parameters
-contact_frequency = Parameter("Contact Frequency", 0.5) # contacts per person per time unit (e.g., day)
+contact_frequency = Parameter("Contact Frequency", 1) # contacts per person per time unit (e.g., day)
 infectivity = Parameter("Infectivity", 0.1) # probability of transmission per contact
 
 # Stocks
 # Need initial values - let's assume a starting population for calculation
 # We'll define total_pop as a simple variable first for initial calculation
-_initial_total_pop = 350 
+_initial_total_pop = 500 
 initial_susceptible = _initial_total_pop - 1
 initial_infected = 1
 

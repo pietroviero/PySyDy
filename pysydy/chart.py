@@ -433,6 +433,14 @@ class Chart:
         if grid:
             ax3.grid(True, linestyle='--', alpha=0.7)
         
-        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for suptitle
+        # Add error handling for tight_layout to prevent KeyboardInterrupt or other errors
+        try:
+            plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for suptitle
+        except Exception as e:
+            # Fallback to a simpler layout adjustment if tight_layout fails
+            print(f"Warning: tight_layout failed with error: {e}")
+            # Adjust subplot parameters manually as a fallback
+            plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, hspace=0.4)
+        
         return fig
     
