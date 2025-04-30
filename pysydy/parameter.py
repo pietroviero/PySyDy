@@ -2,6 +2,9 @@
 Defines the Parameter class for PySyDy library.
 """
 
+from units import units
+
+
 class Parameter:
     """
     Represents a parameter (constant value) in a system dynamics model.
@@ -9,7 +12,7 @@ class Parameter:
     Parameters are used in calculations within flows and auxiliary variables.
     """
 
-    def __init__(self, name, value, units=None, description=None):
+    def __init__(self, name, value, description=None, unit=None):
         """
         Initializes a Parameter object.
 
@@ -23,9 +26,9 @@ class Parameter:
         :type description: str, optional
         """
         self.name = name
-        self.value = value
-        self.units = units
+        self.value = units.get_quantity(value, unit)
         self.description = description
+        self.unit = units.ureg(unit) if unit else None
 
     def get_value(self):
         """
@@ -34,7 +37,7 @@ class Parameter:
         :returns: The parameter's value.
         :rtype: float or int
         """
-        return self.value
+        return units.format_quantity(self.value)
 
     def __str__(self):
         unit_str = f" (units='{self.units}')" if self.units else ""
