@@ -1,71 +1,73 @@
-"""
-Defines the Auxiliary class for PySyDy library.
-"""
+from __future__ import annotations
+from typing import Callable, List, Any
+from units import units                # your singleton wrapper
+ureg = units.ureg
+Q_   = ureg.Quantity
+
 
 class Auxiliary:
     """
-    Represents an auxiliary variable in a system dynamics model.
-
-    Auxiliary variables are calculated based on stocks, flows,
-    parameters, or other auxiliary variables. They help simplify
-    complex relationships and improve model readability.
+    Auxiliary variable in a system-dynamics model.
     """
 
-    def __init__(self, name, calculation_function, inputs=None):
-        """
-        Initializes an Auxiliary object.
-
-        :param name: The name of the auxiliary variable.
-        :type name: str
-        :param calculation_function: A function that calculates the auxiliary variable's value.
-                                     It should take the current system state
-                                     (e.g., a dictionary of stocks, auxiliaries, parameters) as input
-                                     and return the calculated value.
-        :type calculation_function: callable
-        :param inputs: (Optional) A list of input variables (names of stocks, flows, or other auxiliaries)
-                       that this auxiliary variable depends on. This is for documentation and potential
-                       dependency tracking, but not strictly enforced in the calculation itself.
-        :type inputs: list of str, optional
-        """
-
-        # to verify the data
+    def __init__(
+        self,
+        name: str,
+        calculation_function: Callable[[dict[str, Any]], Any],
+        inputs: List[str] | None = None,
+        unit: str | None = None,
+    ):
         if not callable(calculation_function):
-            raise TypeError("calculation_function must be a callable function.")
-            
-        self.name = name
-        self.calculation_function = calculation_function
-        self.inputs = inputs if inputs is not None else [] # Store input names for documentation
-        self.value = None # Will be calculated in each simulation step
+            raise TypeError("calculation_function must be callable")
 
-    def calculate_value(self, system_state):
-        """
-        Calculates the value of the auxiliary variable using its calculation function.
+        self.name   = name
+        self.inputs = inputs or []
+        self.func   = calculation_function
 
-        :param system_state: A dictionary or object representing the current state of the system.
-        :type system_state: dict or object
-        """
-        self.value = self.calculation_function(system_state)
+        # Normalise the unit: None → None, str → pint.Unit, Quantity → its .units
+        if unit is None:
+            self.unit = None
+        elif isinstance(unit, str):
+            self.unit = ureg.parse_expression(unit).units          # pint.Unit
+        else:                               # Quantity or Unit already
+            self.unit = getattr(unit, "units", unit)
 
-    def get_value(self):
-        """
-        Returns the current value of the auxiliary variable.
+        self.value = None                   # updated each step
 
-        :returns: The current value.
-        :rtype: float or any
+    # ------------------------------------------------------------------ #
+    # main logic
+    # ------------------------------------------------------------------ #
+    def calculate_value(self, system_state: dict[str, Any]):
         """
+        Evaluate the user-supplied function, wrap in pint.Quantity,
+        and verify dimensionality.
+        """
+        raw = self.func(system_state)
+
+        # 1) make sure we end up with a Quantity
+        if isinstance(raw, Q_):
+            self.value = raw
+        else:
+            unit_to_use = self.unit or ureg.dimensionless
+            self.value  = Q_(raw, unit_to_use)
+
+        # 2) dimensionality check
+        if self.unit and self.value.dimensionality != self.unit.dimensionality:
+            raise ValueError(
+                f"[UNIT ERROR] {self.name}: returned {self.value} "
+                f"but declared unit is '{self.unit}'"
+            )
         return self.value
 
-    # I don't know but maybe it is more useful to have a function that compute automatically the 
-    # last value of the auxiliary variables avoiding making loops in the python script to get the last value 
-    def get_value_uptaded(self, system_state):
-        """
-        Returns the updated value of the auxiliary variable.
+    # ------------------------------------------------------------------ #
+    # helpers
+    # ------------------------------------------------------------------ #
+    def get_value(self):
+        return self.value
 
-        :param system_state: A dictionary representing the current system state.
-        :return: The calculated value.
-        """
-        return self.calculation_function(system_state)  # Always recalculate on request
+    def get_value_updated(self, system_state: dict[str, Any]):
+        return self.calculate_value(system_state)
 
-
-    def __str__(self):
-        return f"Auxiliary(name='{self.name}', value={self.value})"
+    # nice representation
+    def _str_(self):
+        return f"Auxiliary({self.name}, value={self.value})"
