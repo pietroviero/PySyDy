@@ -1,6 +1,7 @@
 """
 Defines the Stock class for PySyDy library.
 """
+from units import units
 
 class Stock:
     """
@@ -10,7 +11,7 @@ class Stock:
     due to flows.
     """
 
-    def __init__(self, name, initial_value=0.0):
+    def __init__(self, name, initial_value=0.0, unit = None):
         """
         Initializes a Stock object.
 
@@ -20,9 +21,11 @@ class Stock:
         :type initial_value: float, optional
         """
         self.name = name
-        self.value = initial_value
+        self.initial_value = units.get_quantity(initial_value, unit)
+        self.value = self.initial_value
         self.inflows = []
         self.outflows = []
+        self.unit = units.ureg(unit) if unit else None
 
     def add_inflow(self, flow):
         """
@@ -63,7 +66,7 @@ class Stock:
         :returns: The current value of the stock.
         :rtype: float
         """
-        return self.value
+        return units.format_quantity(self.initial_value)
 
     def __str__(self):
         return f"Stock(name='{self.name}', value={self.value:.1f})"
