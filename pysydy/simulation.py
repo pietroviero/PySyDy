@@ -1,36 +1,88 @@
 import pandas as pd
+from units import units
+
 class Simulation:
     """
     Manages the simulation of a system dynamics model, handling time stepping,
     calculation order, and data collection.
     """
-    def __init__(self, stocks, flows, auxiliaries, parameters, timestep=1.0):
+    def __init__(self, stocks, flows, auxiliaries, parameters, timestep=1.0, timestep_unit='day'):
         self.stocks = stocks
         self.flows = flows
         self.auxiliaries = auxiliaries
         self.parameters = parameters
-        self.timestep = timestep
-        self.time = 0.0
+        self.timestep = units.get_quantity(timestep, timestep_unit)  # ⬅️ now flexible
+        self.time = 0.0 * units.ureg(timestep_unit)
         self.history = []
         self.loops = [] # Add list to store feedback loops
+
+        self.check_units()
+
+    def check_units(self):
+        """
+        Check units consistency across stocks, flows, parameters, auxiliaries.
+        """
+        errors = []
+
+        # Check Stocks
+        for stock in self.stocks:
+            if stock.unit is None:
+                errors.append(f"Stock '{stock.name}' missing unit definition.")
+
+        # Check Parameters
+        for parameter in self.parameters:
+            if parameter.unit is None:
+                errors.append(f"Parameter '{parameter.name}' missing unit definition.")
+
+        # Check Flows
+        for flow in self.flows:
+            if flow.unit is None:
+                errors.append(f"Flow '{flow.name}' missing unit definition.")
+            else:
+                # Assume flows should match stock unit/time
+                # You could check source_stock or target_stock more strictly later
+                if flow.source_stock and flow.source_stock.unit:
+                    expected_flow_unit = flow.source_stock.unit / units.ureg.day  # assuming timestep in day
+                    if not flow.unit.dimensionality == expected_flow_unit.dimensionality:
+                        errors.append(
+                            f"Flow '{flow.name}' unit {flow.unit} incompatible with source stock '{flow.source_stock.name}' unit/time ({expected_flow_unit})."
+                        )
+
+        # Check Auxiliaries
+        for aux in self.auxiliaries:
+            if aux.unit is None:
+                errors.append(f"Auxiliary '{aux.name}' missing unit definition.")
+
+        # Final result
+        if errors:
+            print(f"[UNIT CHECK] Found {len(errors)} problem(s):")
+            for error in errors:
+                print(f" - {error}")
+            raise ValueError("[UNIT CHECK FAILED] Please fix unit inconsistencies before running simulation.")
+        else:
+            print("[UNIT CHECK] All units are consistent.")
+
 
     def step(self):
         """
         Advance the simulation by one timestep.
         """
-        # Calculate auxiliaries (assuming they depend on current state)
+        """
+               Advance the simulation by one timestep.
+               """
+        # 1. Calculate auxiliaries
         for aux in self.auxiliaries:
             aux.calculate_value(self._get_system_state())
-        
-        # Calculate flow rates
+
+        # 2. Calculate flow rates
         for flow in self.flows:
             flow.calculate_rate(self._get_system_state())
-        
-        # Update stocks
+
+        # 3. Update stocks
         for stock in self.stocks:
             stock.update(self.timestep)
-        
-        # Record state
+
+        # 4. Record state
         self._record_state()
         self.time += self.timestep
 
@@ -54,7 +106,7 @@ class Simulation:
         }
         self.history.append(state)
 
-        import pandas as pd
+
 
     def get_results(self):
         """
@@ -94,11 +146,28 @@ class Simulation:
         return result_df.set_index('time')
 
 
+
     def run(self, duration):
         """
         Run the simulation for a given duration.
+
+        Duration is automatically interpreted using the timestep unit.
+        Raises a warning if dimensionality mismatch is detected.
         """
-        steps = int(duration / self.timestep)
+
+        if not hasattr(duration, 'units'):
+            duration_quantity = units.get_quantity(duration, str(self.timestep.units))
+        else:
+            duration_quantity = duration
+
+        # Smart dimensionality check
+        if not duration_quantity.dimensionality == self.timestep.dimensionality:
+            raise ValueError(
+                f"[UNIT ERROR] Duration unit {duration_quantity.units} is incompatible with timestep unit {self.timestep.units}."
+            )
+
+        # Safe division
+        steps = int((duration_quantity / self.timestep).to_base_units().magnitude)
         for _ in range(steps):
             self.step()
 
@@ -119,3 +188,51 @@ class Simulation:
         :rtype: list
         """
         return self.loops
+
+    def get_results_for_plot(self):
+        """
+        Returns a DataFrame ready for plotting:
+        - Converts time index from Quantity to float
+        - Converts all stock/flow/auxiliary values from Quantity to float
+        """
+        results = self.get_results().copy()
+
+        # Fix the time index
+        if hasattr(results.index[0], 'magnitude'):
+            results.index = results.index.to_series().apply(lambda t: t.magnitude)
+
+        # Fix values inside columns
+        for col in results.columns:
+            if hasattr(results[col].iloc[0], 'magnitude'):
+                results[col] = results[col].apply(lambda x: x.magnitude)
+
+        return results
+
+    def plot_each_stock(self):
+        """
+        Plots each stock separately over time, with its original unit in the Y-axis label.
+        """
+        import matplotlib.pyplot as plt
+
+        results = self.get_results().copy()
+        time_unit = str(self.timestep.units)
+
+        # Convert time index to pure floats
+        if hasattr(results.index[0], 'magnitude'):
+            results.index = results.index.to_series().apply(lambda t: t.magnitude)
+
+        # Plot each stock individually
+        for stock in self.stocks:
+            if stock.name in results.columns:
+                # Get pure numerical values
+                stock_values = results[stock.name].apply(lambda x: x.magnitude if hasattr(x, 'magnitude') else x)
+
+                plt.figure(figsize=(8, 5))
+                plt.plot(results.index, stock_values)
+                plt.title(f"{stock.name} Over Time")
+                plt.xlabel(f"Time [{time_unit}]")
+                ylabel = f"{stock.name} [{str(stock.unit)}]" if stock.unit else f"{stock.name} [no unit]"
+                plt.ylabel(ylabel)
+                plt.grid(True)
+                plt.show()
+
