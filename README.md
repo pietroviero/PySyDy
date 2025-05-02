@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 
-**PySyDy** (Python System Dynamics) is a lightweight and intuitive Python library for building and simulating system dynamics models. It provides core components for representing stocks, flows, and auxiliary variables, making it easy to create and explore dynamic systems. The library also includes advanced features such as delays, behavior modes, feedback loops, and visualization capabilities.
+**PySyDy** (Python System Dynamics) is a compact yet fully-featured Python framework for building and running system-dynamics models. It offers a clear object model for the core elements of a stock-and-flow structure—stocks, flows, parameters and auxiliaries—so a working model can be expressed in just a few lines of code. On top of that foundation, PySyDy provides higher-level tools: configurable time delays, common behavioural archetypes, automatic feedback-loop analysis and built-in graph and time-series visualisations. The library lets you move quickly from concept to simulation and insight while preserving the rigour and extensibility needed for serious research.
 
 ## Table of Contents
 
