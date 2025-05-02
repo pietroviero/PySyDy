@@ -1,0 +1,109 @@
+from PySyDy import pysydy
+from units import units
+
+# --- Parameters ---
+contact_frequency = pysydy.Parameter("Contact Frequency", 0.5, unit="1/day")  # contacts per person per day
+infectivity = pysydy.Parameter("Infectivity", 0.1, unit="dimensionless")  # probability of transmission per contact (dimensionless)
+
+# --- Stocks ---
+_initial_total_pop = 350
+initial_susceptible = _initial_total_pop - 1
+initial_infected = 1
+
+pop_susceptible = pysydy.Stock("Population Susceptible to SARS", initial_susceptible, unit="people")
+pop_infected = pysydy.Stock("Population infected with SARS", initial_infected, unit="people")
+cumulative_cases = pysydy.Stock("Cumulative Reported Cases", initial_infected, unit="people")
+
+# --- Auxiliaries ---
+
+# Total Population = susceptible + infected
+total_population = pysydy.Auxiliary(
+    "Total Population",
+    lambda state: pop_susceptible.value + pop_infected.value,
+    unit="people"
+)
+
+# Contacts per day from susceptible people
+susceptible_contacts = pysydy.Auxiliary(
+    "Susceptible Contacts",
+    lambda state: pop_susceptible.value * contact_frequency.value,
+    unit="people/day"
+)
+
+# Probability that a contact is with an infected person
+def calculate_prob_contact_infected(state):
+    tot_pop = total_population.value
+    if hasattr(tot_pop, 'magnitude') and tot_pop.magnitude > 0:
+        return pop_infected.value / tot_pop
+    else:
+
+        return units.get_quantity(0, "1")  # Explicitly return a dimensionless quantity
+  # Auxiliary will wrap into dimensionless Quantity
+
+prob_contact_infected = pysydy.Auxiliary(
+    "Probability of contacts with Infected people",
+    calculate_prob_contact_infected,
+    unit="dimensionless"  # dimensionless
+)
+
+# Contacts between susceptible and infected people
+def calculate_contacts_inf_uninf(state):
+    susceptible_value = susceptible_contacts.value
+    prob_infected_value = prob_contact_infected.value
+    if susceptible_value is not None and prob_infected_value is not None:
+        return susceptible_value * prob_infected_value
+    else:
+        return 0  # Auxiliary will wrap into "people/day"
+
+contacts_inf_uninf = pysydy.Auxiliary(
+    "Contacts between Infected and Uninfected People",
+    calculate_contacts_inf_uninf,
+    unit="people/day"
+)
+
+# --- Flows ---
+
+# Infection rate (new infections per day)
+def infection_rate_eq(state):
+    contacts_value = contacts_inf_uninf.value
+    infectivity_value = infectivity.value
+
+    if contacts_value is not None and infectivity_value is not None:
+        return contacts_value * infectivity_value
+    else:
+        return 0  # Auxiliary will wrap into "people/day"
+
+infection_rate = pysydy.Flow(
+    name="Infection Rate",
+    source_stock=pop_susceptible,
+    target_stock=pop_infected,
+    rate_function=infection_rate_eq,
+    unit="people/day"
+)
+
+# New reported cases (same as infection rate, flowing into cumulative cases)
+new_reported_cases = pysydy.Flow(
+    name="New Reported Cases",
+    source_stock=None,
+    target_stock=cumulative_cases,
+    rate_function=lambda state: infection_rate.rate,
+    unit="people/day"
+)
+
+# --- Prepare and Run Simulation ---
+stocks = [pop_susceptible, pop_infected, cumulative_cases]
+flows = [infection_rate, new_reported_cases]
+auxiliaries = [total_population, susceptible_contacts, prob_contact_infected, contacts_inf_uninf]
+parameters = [contact_frequency, infectivity]
+
+sim = pysydy.Simulation(
+    stocks=stocks,
+    flows=flows,
+    auxiliaries=auxiliaries,
+    parameters=parameters,
+    timestep=0.1,
+    timestep_unit='day'
+)
+
+sim.run(duration=120)  # Simulate 120 days
+sim.plot_each_stock()
