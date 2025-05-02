@@ -2,6 +2,10 @@
 Defines the Parameter class for PySyDy library.
 """
 
+from units import units
+ureg = units.ureg
+Q_ = ureg.Quantity
+
 class Parameter:
     """
     Represents a parameter (constant value) in a system dynamics model.
@@ -9,23 +13,32 @@ class Parameter:
     Parameters are used in calculations within flows and auxiliary variables.
     """
 
-    def __init__(self, name, value, units=None, description=None):
+    def __init__(self, name, value, description=None, unit=None):
         """
         Initializes a Parameter object.
 
-        :param name: The name of the parameter.
-        :type name: str
+        :param name: Name of the parameter.
         :param value: The numerical value of the parameter.
-        :type value: float or int
-        :param units: (Optional) Units of measurement for the parameter (e.g., "square kilometers", "per year").
-        :type units: str, optional
-        :param description: (Optional) A description of what the parameter represents.
-        :type description: str, optional
+        :param description: Description of what the parameter represents.
+        :param unit: Units of measurement (e.g., "people", "1/day").
         """
         self.name = name
-        self.value = value
-        self.units = units
         self.description = description
+
+        # Normalize unit
+        if unit is None:
+            self.unit = ureg.dimensionless
+        elif isinstance(unit, str):
+            if unit.strip().lower() in {"1", "dimensionless"}:
+                self.unit = ureg.dimensionless
+            else:
+                self.unit = ureg.parse_expression(unit).units
+        else:
+            self.unit = getattr(unit, "units", unit)
+
+        # Wrap the value
+        self.value = value if isinstance(value, Q_) else Q_(value, self.unit)
+
 
     def get_value(self):
         """
@@ -34,7 +47,7 @@ class Parameter:
         :returns: The parameter's value.
         :rtype: float or int
         """
-        return self.value
+        return units.format_quantity(self.value)
 
     def __str__(self):
         unit_str = f" (units='{self.units}')" if self.units else ""
