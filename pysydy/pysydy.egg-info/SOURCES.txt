@@ -1,0 +1,6 @@
+README.md
+setup.py
+pysydy/pysydy.egg-info/PKG-INFO
+pysydy/pysydy.egg-info/SOURCES.txt
+pysydy/pysydy.egg-info/dependency_links.txt
+pysydy/pysydy.egg-info/top_level.txt

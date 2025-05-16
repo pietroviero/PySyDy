@@ -1,34 +1,55 @@
 """
 Defines the Flow class for PySyDy library.
 """
+from units import units
+from pint import Quantity
+
+ureg = units.ureg
+Q_ = ureg.Quantity
 
 class Flow:
     """
     Represents a flow in a system dynamics model.
-
     A flow is a rate variable that changes the level of stocks over time.
     """
 
-    def __init__(self, name, source_stock, target_stock, rate_function):
+    def __init__(self, name, source_stock, target_stock, rate_function, unit=None, inputs = None):
         """
         Initializes a Flow object.
 
         :param name: The name of the flow.
-        :type name: str
-        :param source_stock: The stock that the flow originates from (can be None for sources).
-        :type source_stock: Stock or None
-        :param target_stock: The stock that the flow goes to (can be None for sinks).
-        :type target_stock: Stock or None
+        :param source_stock: The stock that the flow originates from (can be None).
+        :param target_stock: The stock that the flow goes to (can be None).
         :param rate_function: A function that calculates the flow rate.
-                                It should take the current state of the system
-                                (e.g., stocks' values) as input and return the flow rate.
-        :type rate_function: callable
+                              It should take the current state of the system
+                              (e.g., stocks' values) as input and return the flow rate.
+        :param unit: The expected unit of the flow (e.g., "people/day").
         """
         self.name = name
         self.source_stock = source_stock
         self.target_stock = target_stock
         self.rate_function = rate_function
         self.rate = 0.0  # Current flow rate, updated in each simulation step
+
+        if inputs is None:
+            print(
+                f"Warning: Flow '{name}' created without explicit 'inputs' list. Automatic loop detection may be incomplete.")  # Or raise error
+            self.inputs = []
+        else:
+            # Ensure inputs is a list of strings (basic check)
+            if not isinstance(inputs, list) or not all(isinstance(item, str) for item in inputs):
+                raise TypeError(f"Flow '{name}': 'inputs' argument must be a list of strings, got {type(inputs)}")
+            self.inputs = inputs
+
+        if unit is None:
+            self.unit = ureg.dimensionless
+        elif isinstance(unit, str):
+            if unit.strip().lower() in {"1", "0", "dimensionless"}:
+                self.unit = ureg.dimensionless
+            else:
+                self.unit = ureg.parse_expression(unit).units
+        else:
+            self.unit = getattr(unit, "units", unit)
 
         if source_stock:
             source_stock.add_outflow(self)
@@ -37,22 +58,29 @@ class Flow:
 
     def calculate_rate(self, system_state):
         """
-        Calculates the flow rate using the provided rate function.
-
-        :param system_state: A dictionary or object representing the current state of the system,
-                             e.g., containing stock values.
-        :type system_state: dict or object
+        Calculates the flow rate using the rate function.
+        Wraps result in Quantity and checks dimensionality.
         """
-        self.rate = self.rate_function(system_state)
+        raw = self.rate_function(system_state)
+
+        if isinstance(raw, Quantity):
+            self.rate = raw
+        else:
+            self.rate = Q_(raw, self.unit)
+
+        if self.unit and self.rate.dimensionality != self.unit.dimensionality:
+            raise ValueError(
+                f"[UNIT ERROR] Flow '{self.name}': returned {self.rate} "
+                f"but declared unit is '{self.unit}'"
+            )
+
+        return self.rate
 
     def get_rate(self):
         """
-        Returns the current flow rate.
-
-        :returns: The current flow rate.
-        :rtype: float
+        Returns the current flow rate (formatted).
         """
-        return self.rate
+        return f"Flow formula: {self.rate} [{self.unit}]"
 
     def __str__(self):
-        return f"Flow(name='{self.name}', rate={self.rate:.1f})"
+        return f"Flow(name='{self.name}', rate={self.rate})"

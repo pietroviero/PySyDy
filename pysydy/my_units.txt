@@ -1,0 +1,63 @@
+# System Dynamics Custom Units
+
+# --- Base Units ---
+people = [people]
+person = people
+
+dimensionless = [dimensionless]
+
+items = [items]
+item = [items]
+cases = [cases]
+contacts = [contact]
+tasks = [task]
+projects = [task]
+widgets = [unit]
+shipment = [shipment]
+dose = [dose]
+vial = [vial]
+order = [order]
+event = [event]
+unit = [unit]
+bottle = [volume]
+
+# --- Time Units ---
+day = [time]
+week = 7 * day
+month = 30 * day
+year = 365 * day
+hour = 1/24 * day
+minute = 1/1440 * day
+
+# --- Money Units ---
+dollar = [currency]
+euro = dollar
+yen = dollar
+
+# --- Environmental Units ---
+kg = kilogram
+ton = 1000 * kg
+gram = 0.001 * kg
+
+CO2 = [emission]
+CO2e = CO2
+water_liter = [volume]
+water_m3 = 1000 * water_liter
+
+land_m2 = [area]
+land_hectare = 10000 * land_m2
+land_km2 = 1_000_000 * land_m2
+
+energy_J = joule
+energy_kWh = 3.6e6 * energy_J
+
+# --- Derived Units (Flows) ---
+people_per_day = people/day
+cases_per_day = cases/day
+patients_per_day = people/day
+contacts_per_day = contacts/day
+widgets_per_day = widgets/day
+orders_per_day = order/day
+tasks_per_day = tasks/day
+doses_per_day = dose/day
+shipments_per_month = shipment/month

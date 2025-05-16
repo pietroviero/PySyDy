@@ -1,6 +1,10 @@
 """
 Defines the Stock class for PySyDy library.
 """
+from units import units
+ureg = units.ureg
+Q_ = ureg.Quantity
+
 
 class Stock:
     """
@@ -10,17 +14,34 @@ class Stock:
     due to flows.
     """
 
-    def __init__(self, name, initial_value=0.0):
+    def __init__(self, name, initial_value=0.0, unit = None):
         """
-        Initializes a Stock object.
+               Initializes a Stock object.
 
-        :param name: The name of the stock.
-        :type name: str
-        :param initial_value: The initial value of the stock.
-        :type initial_value: float, optional
-        """
+               :param name: The name of the stock.
+               :param initial_value: The initial value (scalar or Quantity).
+               :param unit: The unit of the stock (string or Quantity-compatible).
+               """
         self.name = name
-        self.value = initial_value
+
+        # Normalize unit
+        if unit is None:
+            self.unit = ureg.dimensionless
+        elif isinstance(unit, str):
+            if unit.strip().lower() in {"1", "dimensionless"}:
+                self.unit = ureg.dimensionless
+            else:
+                self.unit = ureg.parse_expression(unit).units
+        else:
+            self.unit = getattr(unit, "units", unit)
+
+        # Wrap initial value
+        if isinstance(initial_value, Q_):
+            self.initial_value = initial_value
+        else:
+            self.initial_value = Q_(initial_value, self.unit)
+
+        self.value = self.initial_value
         self.inflows = []
         self.outflows = []
 
@@ -63,7 +84,7 @@ class Stock:
         :returns: The current value of the stock.
         :rtype: float
         """
-        return self.value
+        return units.format_quantity(self.initial_value)
 
     def __str__(self):
         return f"Stock(name='{self.name}', value={self.value:.1f})"
